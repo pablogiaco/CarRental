@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="log4net" Version="2.0.17" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.31" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.31">
       <PrivateAssets>all</PrivateAssets>
@@ -24,6 +25,12 @@
   <ItemGroup>
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
     <ProjectReference Include="..\DTOs\DTOs.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

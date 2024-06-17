@@ -1,4 +1,5 @@
 ﻿using CarRentalBackEnd.Controllers;
+using CarRentalBackEnd.Utils;
 using DataAccess;
 using DTOs.Models;
 using Microsoft.AspNetCore.Http;
@@ -29,6 +30,7 @@ namespace CarRentalBackEndTests
             var vehicle2 = new Vehicle { Model = CAR_MODEL, Brand = CAR_BRAND, DailyPrice = DAILY_PRICE };
             await _controller.AddVehicle(vehicle1);
             await _controller.AddVehicle(vehicle2);
+            await _context.SaveChangesAsync();
 
             //Act
             var actionResult = await _controller.GetVehicles();
@@ -57,6 +59,7 @@ namespace CarRentalBackEndTests
 
             //Act
             var result = await _controller.AddVehicle(vehicle);
+            await _context.SaveChangesAsync();
             var objectResult = result.Result as ObjectResult;
             var vehicleResult = objectResult!.Value as Vehicle;
             var vehicleInDb = _context.Vehicles.SingleOrDefault(x => x.Id == vehicle.Id);
@@ -87,7 +90,7 @@ namespace CarRentalBackEndTests
             _controller = new VehiclesController(_context);
 
             var vehicle = new Vehicle { Model = CAR_MODEL, Brand = CAR_BRAND, DailyPrice = DAILY_PRICE };
-            _context.Vehicles.Add(vehicle);
+            await _context.Vehicles.AddAsync(vehicle);
             await _context.SaveChangesAsync();
 
             //Act
@@ -101,6 +104,7 @@ namespace CarRentalBackEndTests
         [Test]
         public async Task RemoveVehicle_ReturnNotFound()
         {
+            //Arrange
             var options = new DbContextOptionsBuilder<CarRentalDbContext>()
                .UseInMemoryDatabase(databaseName: nameof(RemoveVehicle_ReturnNotFound))
                .Options;
@@ -113,6 +117,39 @@ namespace CarRentalBackEndTests
 
             //Assert
             Assert.That(result, !Is.Null);
+        }
+
+        [Test]
+        public async Task RemoveVehicle_ReturnBadRequest()
+        {
+            //Arrange
+            var options = new DbContextOptionsBuilder<CarRentalDbContext>()
+               .UseInMemoryDatabase(databaseName: nameof(RemoveVehicle_ReturnBadRequest))
+               .Options;
+
+            _context = new CarRentalDbContext(options);
+            _controller = new VehiclesController(_context);
+
+            var vehicle = new Vehicle { Model = CAR_MODEL, Brand = CAR_BRAND, DailyPrice = DAILY_PRICE };
+            await _context.Vehicles.AddAsync(vehicle);
+
+            var date = DateTime.UtcNow;
+            var rental = new Rental 
+            { 
+                VehicleId = vehicle.Id, 
+                Vehicle = vehicle, 
+                StartDate = date.AddDays(-1),
+                EndDate = date.AddDays(1) 
+            };
+            await _context.Rentals.AddAsync(rental);
+            await _context.SaveChangesAsync();
+
+            //Act
+            var result = await _controller.RemoveVehicle(1) as BadRequestObjectResult;
+
+            //Assert
+            Assert.That(result, !Is.Null);
+            Assert.That(result.Value, Is.EqualTo(Constants.VEHICLE_HAS_A_PENDING_RENTAL_ERROR_MESSAGE));            
         }
 
         [TearDown]

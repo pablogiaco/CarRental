@@ -2,6 +2,7 @@
 
 namespace DTOs.Models
 {
+    [SwaggerSchema(ReadOnly = true)]
     public class Client
     {
         [SwaggerSchema(ReadOnly = true)]

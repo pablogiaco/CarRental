@@ -2,18 +2,22 @@
 using Microsoft.EntityFrameworkCore;
 using DataAccess;
 using DTOs.Models;
+using log4net;
+using System.Text.Json;
+using CarRentalBackEnd.Utils;
 
 namespace CarRentalBackEnd.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class ClientsController : ControllerBase
     {
         private readonly CarRentalDbContext _context;
+        private readonly ILog _log = LogManager.GetLogger(typeof(ClientsController));
 
         public ClientsController(CarRentalDbContext context)
         {
-            _context = context;
+            _context = context;            
         }
 
         [HttpGet]
@@ -26,7 +30,8 @@ namespace CarRentalBackEnd.Controllers
         [HttpPost]
         public async Task<ActionResult<Client>> AddClient(Client client)
         {
-            _context.Clients.Add(client);
+            _log.Debug($"Adding client: {JsonSerializer.Serialize(client)}");
+            await _context.Clients.AddAsync(client);
             await _context.SaveChangesAsync();
             return Ok(client);
         }
@@ -37,12 +42,21 @@ namespace CarRentalBackEnd.Controllers
             var client = await _context.Clients.FindAsync(id);
             if (client == null) return NotFound();           
             
-            if (_context.Rentals.Any(x => x.ClientId == id && x.EndDate.Date >= DateTime.Now.Date && !x.IsCancelled))
-                return BadRequest("Client has a pending rental");
+            if (ClientHasAPendingRental(id)) return BadRequest(Constants.CLIENT_HAS_A_PENDING_RENTAL_ERROR_MESSAGE);
+
+            _log.Debug($"Removing client: {JsonSerializer.Serialize(client)}");
 
             _context.Clients.Remove(client);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private bool ClientHasAPendingRental(int id)
+        {
+            return _context.Rentals.Any(
+                 x => x.ClientId == id
+                 && x.EndDate.Date >= DateTime.UtcNow.Date
+                 && !x.IsCancelled);
         }
     }
 
